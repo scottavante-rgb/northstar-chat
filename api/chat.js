@@ -58,42 +58,24 @@ export default async function handler(req, res) {
   }
 }
 
-// REAL CLAUDE API - Now that we know everything works!
 async function callClaude(message) {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return `🤖 Claude not configured. Add your Anthropic API key to Vercel environment variables.`;
-  }
+  // Return debug info in the response itself
+  const debugInfo = {
+    hasApiKey: !!process.env.ANTHROPIC_API_KEY,
+    keyLength: process.env.ANTHROPIC_API_KEY?.length || 0,
+    keyPrefix: process.env.ANTHROPIC_API_KEY?.substring(0, 10) || 'none',
+    startsWithSkAnt: process.env.ANTHROPIC_API_KEY?.startsWith('sk-ant') || false,
+    availableEnvVars: Object.keys(process.env).filter(k => k.includes('ANTH'))
+  };
+  
+  return `🔍 DEBUG INFO:
+- API Key exists: ${debugInfo.hasApiKey}
+- Key length: ${debugInfo.keyLength}
+- Key starts with: ${debugInfo.keyPrefix}...
+- Starts with sk-ant: ${debugInfo.startsWithSkAnt}
+- Available ANTH vars: ${debugInfo.availableEnvVars.join(', ') || 'none'}
 
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-3-sonnet-20240229',
-        max_tokens: 1000,
-        messages: [
-          {
-            role: 'user',
-            content: `You are Northstar AI, Summit AI's intelligent assistant. Answer the user's question naturally and helpfully. User question: ${message}`
-          }
-        ]
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Claude API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data.content[0].text;
-  } catch (error) {
-    console.error('Claude API Error:', error);
-    throw new Error('Claude API unavailable');
-  }
+This debug info will help us fix the API key issue.`;
 }
 
 // ChatGPT API Integration (ready for when you add OpenAI key)
