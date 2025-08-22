@@ -130,6 +130,20 @@
             width: 100%;
         }
 
+        .welcome-message {
+            text-align: center;
+            color: #6b7280;
+            margin: 2rem 0;
+            font-size: 1rem;
+        }
+
+        .welcome-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+
         .message {
             display: flex;
             flex-direction: column;
@@ -377,25 +391,10 @@
             <span>Currently using Claude Sonnet via Summit AI Infrastructure</span>
         </div>
 
-        <!-- Sample conversation -->
-        <div class="message user">
-            <div class="message-avatar user-avatar">👤</div>
-            <div class="message-content">What are your pricing models for enterprise AI infrastructure?</div>
-        </div>
-
-        <div class="message bot">
-            <div class="message-avatar bot-avatar">NS</div>
-            <div class="message-content">Summit AI offers three pricing tiers: Foundation Layer at $2,500/month for AI-ready infrastructure, Agent Activation at $125/agent/month for operational automation, and Enterprise Intelligence starting at $75K/month for full AI transformation. All tiers include sovereign cloud compliance and healthcare specialization. Would you like details on any specific tier?</div>
-        </div>
-
-        <div class="message user">
-            <div class="message-avatar user-avatar">👤</div>
-            <div class="message-content">Tell me more about the Agent Activation pricing</div>
-        </div>
-
-        <div class="message bot">
-            <div class="message-avatar bot-avatar">NS</div>
-            <div class="message-content">Agent Activation uses a hybrid pricing model: $125 per active agent per month, plus $0.45 per thousand agent actions. This includes workflow automation across PACS/VNA systems, multi-modal AI processing for DICOM and HL7, and professional services at $50K setup plus $25K quarterly optimization. You also get 99.99% uptime SLA with sub-200ms latency. This tier is perfect for healthcare organizations deploying AI agents in clinical workflows.</div>
+        <!-- Welcome message instead of sample conversation -->
+        <div class="welcome-message">
+            <div class="welcome-title">Welcome to Northstar AI</div>
+            <p>Ask me anything about Summit AI's sovereign cloud infrastructure, pricing models, or enterprise capabilities. Choose your preferred AI model above and start chatting!</p>
         </div>
 
         <!-- Typing indicator (hidden by default) -->
@@ -527,6 +526,12 @@
             
             if (!message) return;
 
+            // Hide welcome message on first interaction
+            const welcomeMsg = document.querySelector('.welcome-message');
+            if (welcomeMsg) {
+                welcomeMsg.style.display = 'none';
+            }
+
             // Add user message to chat
             addMessage(message, 'user');
             
@@ -546,6 +551,10 @@
                 // Update typing indicator to show which model is being called
                 updateTypingIndicator(`${getCurrentModelName()} is thinking...`);
                 
+                // 🔍 Enhanced debugging
+                console.log(`🔄 Calling ${currentModel} API with message:`, userMessage);
+                console.log(`📡 Making POST request to /api/chat`);
+                
                 // Call your real API endpoint
                 const response = await fetch('/api/chat', {
                     method: 'POST',
@@ -558,31 +567,40 @@
                     })
                 });
 
+                console.log(`📡 API Response Status:`, response.status, response.statusText);
+
                 if (!response.ok) {
-                    throw new Error(`API Error: ${response.status} - ${response.statusText}`);
+                    // Get more details about the error
+                    const errorText = await response.text();
+                    console.error(`❌ API Error Details:`, errorText);
+                    throw new Error(`API Error: ${response.status} - ${errorText}`);
                 }
 
                 const data = await response.json();
+                console.log(`✅ API Response Data:`, data);
                 
                 // Add the real AI response to chat
                 addMessage(data.response, 'bot');
 
-                // Log successful API call
                 console.log(`✅ ${currentModel} API call successful`);
 
             } catch (error) {
-                console.error('❌ API Error:', error);
+                console.error('❌ Full Error Details:', error);
                 
-                // Different fallback messages based on error type
+                // Detailed error messages
                 let fallbackMessage;
                 if (error.message.includes('404')) {
-                    fallbackMessage = `The ${getCurrentModelName()} API endpoint is not yet configured. Please check your setup.`;
+                    fallbackMessage = `❌ API Endpoint Missing: The /api/chat endpoint was not found. Make sure you created the api/chat.js file.`;
                 } else if (error.message.includes('500')) {
-                    fallbackMessage = `${getCurrentModelName()} is experiencing technical difficulties. Please try again later.`;
+                    fallbackMessage = `❌ Server Error: ${getCurrentModelName()} API failed on the server. Check your API key configuration in Vercel.`;
                 } else if (error.message.includes('401') || error.message.includes('403')) {
-                    fallbackMessage = `${getCurrentModelName()} API authentication failed. Please check your API key configuration.`;
+                    fallbackMessage = `❌ Authentication Failed: Check your ${getCurrentModelName()} API key in Vercel environment variables.`;
+                } else if (error.message.includes('Method not allowed')) {
+                    fallbackMessage = `❌ API Configuration Issue: The endpoint exists but there's a setup problem.`;
+                } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                    fallbackMessage = `❌ Network Error: Cannot reach the API endpoint. Check your deployment.`;
                 } else {
-                    fallbackMessage = `I'm having trouble connecting to ${getCurrentModelName()}. Please try again in a moment.`;
+                    fallbackMessage = `❌ Unexpected Error: ${error.message}. Check browser console for details.`;
                 }
                 
                 addMessage(fallbackMessage, 'bot');
@@ -647,6 +665,7 @@
 
         function hideTypingIndicator() {
             document.getElementById('typingIndicator').style.display = 'none';
+            resetTypingIndicator(); // Reset back to dots for next time
         }
 
         function scrollToBottom() {
@@ -654,12 +673,6 @@
             setTimeout(() => {
                 chatContainer.scrollTop = chatContainer.scrollHeight;
             }, 100);
-        }
-
-        function generateAIResponse(userMessage) {
-            // Model-specific response styles - REMOVED
-            // This function is now handled by the async generateAIResponse above
-            // keeping this for backwards compatibility but it won't be called
         }
 
         // Auto-focus input on page load
