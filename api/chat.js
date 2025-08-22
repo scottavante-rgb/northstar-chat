@@ -1,4 +1,4 @@
-// api/chat.js - Test with alternative environment variable name
+// api/chat.js - Test with different environment variable name
 export default async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -58,37 +58,38 @@ export default async function handler(req, res) {
   }
 }
 
-// Try multiple environment variable names
+// Try with the new environment variable name
 async function callChatGPT(message) {
-  // Check multiple possible environment variable names
-  const apiKey = process.env.OPENAI_API_KEY || process.env.OPENAI_KEY || process.env.CHATGPT_API_KEY;
+  // Try the new variable name
+  const apiKey = process.env.TEST_OPENAI_KEY;
   
   const debugInfo = {
-    hasOpenaiApiKey: !!process.env.OPENAI_API_KEY,
-    hasOpenaiKey: !!process.env.OPENAI_KEY,
-    hasChatgptApiKey: !!process.env.CHATGPT_API_KEY,
+    hasTestKey: !!process.env.TEST_OPENAI_KEY,
+    hasOriginalKey: !!process.env.OPENAI_API_KEY,
     foundKey: !!apiKey,
     keyLength: apiKey?.length || 0,
     keyPrefix: apiKey?.substring(0, 15) || 'none',
-    allEnvKeys: Object.keys(process.env).sort(),
+    allEnvKeys: Object.keys(process.env).filter(key => key.includes('OPENAI') || key.includes('TEST')),
+    totalEnvVars: Object.keys(process.env).length,
     vercelEnv: process.env.VERCEL_ENV,
     nodeEnv: process.env.NODE_ENV
   };
   
   if (!apiKey) {
-    return `🔍 ENHANCED DEBUG INFO:
-- OPENAI_API_KEY exists: ${debugInfo.hasOpenaiApiKey}
-- OPENAI_KEY exists: ${debugInfo.hasOpenaiKey}
-- CHATGPT_API_KEY exists: ${debugInfo.hasChatgptApiKey}
-- Found any key: ${debugInfo.foundKey}
+    return `🔍 TESTING NEW VARIABLE NAME:
+- TEST_OPENAI_KEY exists: ${debugInfo.hasTestKey}
+- OPENAI_API_KEY exists: ${debugInfo.hasOriginalKey}
+- Found working key: ${debugInfo.foundKey}
+- Key length: ${debugInfo.keyLength}
+- Key prefix: ${debugInfo.keyPrefix}
+- OpenAI/Test related vars: ${debugInfo.allEnvKeys.join(', ') || 'none'}
+- Total env vars: ${debugInfo.totalEnvVars}
 - Vercel Environment: ${debugInfo.vercelEnv}
-- Node Environment: ${debugInfo.nodeEnv}
-- Available env vars: ${debugInfo.allEnvKeys.slice(0, 10).join(', ')}...
-- Total env vars: ${debugInfo.allEnvKeys.length}
 
-Add environment variable to Vercel with name 'OPENAI_API_KEY', 'OPENAI_KEY', or 'CHATGPT_API_KEY'`;
+Create environment variable 'TEST_OPENAI_KEY' in Vercel settings.`;
   }
 
+  // If we have the key, make the actual API call
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -122,14 +123,15 @@ Provide helpful, structured responses about Summit AI's offerings.`
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
     return data.choices[0].message.content;
   } catch (error) {
     console.error('ChatGPT API Error:', error);
-    return `❌ ChatGPT API error: ${error.message}. Key found: ${!!apiKey}, Key length: ${apiKey?.length}`;
+    return `❌ ChatGPT API error: ${error.message}. Using TEST_OPENAI_KEY variable.`;
   }
 }
 
@@ -189,7 +191,6 @@ async function callGemini(message) {
   if (!process.env.GOOGLE_API_KEY) {
     return `🤖 Gemini not configured yet. Add your Google API key to Vercel environment variables as 'GOOGLE_API_KEY' to enable Gemini responses.`;
   }
-  // Gemini implementation...
   return "Gemini integration ready";
 }
 
@@ -198,6 +199,5 @@ async function callKimi(message) {
   if (!process.env.KIMI_API_KEY) {
     return `🌙 Kimi AI not configured yet. Add your Moonshot API key to Vercel environment variables as 'KIMI_API_KEY' to enable Kimi responses.`;
   }
-  // Kimi implementation...
   return "Kimi integration ready";
 }
