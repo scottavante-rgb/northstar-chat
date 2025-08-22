@@ -58,24 +58,55 @@ export default async function handler(req, res) {
   }
 }
 
+// Claude API Integration
 async function callClaude(message) {
-  // Return debug info in the response itself
-  const debugInfo = {
-    hasApiKey: !!process.env.ANTHROPIC_API_KEY,
-    keyLength: process.env.ANTHROPIC_API_KEY?.length || 0,
-    keyPrefix: process.env.ANTHROPIC_API_KEY?.substring(0, 10) || 'none',
-    startsWithSkAnt: process.env.ANTHROPIC_API_KEY?.startsWith('sk-ant') || false,
-    availableEnvVars: Object.keys(process.env).filter(k => k.includes('ANTH'))
-  };
-  
-  return `🔍 DEBUG INFO:
-- API Key exists: ${debugInfo.hasApiKey}
-- Key length: ${debugInfo.keyLength}
-- Key starts with: ${debugInfo.keyPrefix}...
-- Starts with sk-ant: ${debugInfo.startsWithSkAnt}
-- Available ANTH vars: ${debugInfo.availableEnvVars.join(', ') || 'none'}
+  if (!process.env.CLAUDE_API_KEY) {
+    return `🤖 Claude not configured. Add your Claude API key to Vercel environment variables as 'CLAUDE_API_KEY'.`;
+  }
 
-This debug info will help us fix the API key issue.`;
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.CLAUDE_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-3-sonnet-20240229',
+        max_tokens: 1000,
+        messages: [
+          {
+            role: 'user',
+            content: `You are Northstar AI, Summit AI's intelligent assistant specializing in sovereign cloud infrastructure and enterprise AI solutions. 
+
+Summit AI offers three pricing tiers:
+- Foundation Layer: $2,500/month for AI-ready infrastructure with 99.95% uptime SLA
+- Agent Activation: $125/agent/month plus $0.45 per thousand actions for operational automation  
+- Enterprise Intelligence: Starting at $75K/month for complete AI transformation
+
+Key features: Sovereign cloud compliance, HIPAA/SOC2 certified, healthcare specialization, geographic data boundaries, native compliance architecture.
+
+Provide helpful, structured responses about Summit AI's offerings.
+
+User question: ${message}`
+          }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('Claude API Error Response:', errorData);
+      throw new Error(`Claude API error: ${response.status} - ${errorData}`);
+    }
+
+    const data = await response.json();
+    return data.content[0].text;
+  } catch (error) {
+    console.error('Claude API Error:', error);
+    throw new Error(`Claude API unavailable: ${error.message}`);
+  }
 }
 
 // ChatGPT API Integration (ready for when you add OpenAI key)
@@ -226,54 +257,3 @@ async function callKimi(message) {
     return `❌ Kimi API error: ${error.message}. Please check your Moonshot API key configuration.`;
   }
 }
-
-// REAL CLAUDE API FUNCTION (currently commented out for testing)
-/*
-async function callClaude(message) {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return `🤖 Claude not configured. Add your Anthropic API key to Vercel environment variables as 'ANTHROPIC_API_KEY'.`;
-  }
-
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-3-sonnet-20240229',
-        max_tokens: 1000,
-        messages: [
-          {
-            role: 'user',
-            content: `You are Northstar AI, Summit AI's intelligent assistant specializing in sovereign cloud infrastructure and enterprise AI solutions. 
-
-Summit AI offers three pricing tiers:
-- Foundation Layer: $2,500/month for AI-ready infrastructure
-- Agent Activation: $125/agent/month for operational automation  
-- Enterprise Intelligence: $75K/month for full AI transformation
-
-All tiers include sovereign cloud compliance, HIPAA/SOC2 certification, and healthcare specialization.
-
-User question: ${message}`
-          }
-        ]
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error('Claude API Error Response:', errorData);
-      throw new Error(`Claude API error: ${response.status} - ${errorData}`);
-    }
-
-    const data = await response.json();
-    return data.content[0].text;
-  } catch (error) {
-    console.error('Claude API Error:', error);
-    throw new Error(`Claude API unavailable: ${error.message}`);
-  }
-}
-*/
