@@ -537,11 +537,86 @@
             // Show typing indicator
             showTypingIndicator();
             
-            // Simulate AI response after delay
-            setTimeout(() => {
+            // Call real AI API
+            generateAIResponse(message);
+        }
+
+        async function generateAIResponse(userMessage) {
+            try {
+                // Update typing indicator to show which model is being called
+                updateTypingIndicator(`${getCurrentModelName()} is thinking...`);
+                
+                // Call your real API endpoint
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: userMessage,
+                        model: currentModel
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status} - ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                
+                // Add the real AI response to chat
+                addMessage(data.response, 'bot');
+
+                // Log successful API call
+                console.log(`✅ ${currentModel} API call successful`);
+
+            } catch (error) {
+                console.error('❌ API Error:', error);
+                
+                // Different fallback messages based on error type
+                let fallbackMessage;
+                if (error.message.includes('404')) {
+                    fallbackMessage = `The ${getCurrentModelName()} API endpoint is not yet configured. Please check your setup.`;
+                } else if (error.message.includes('500')) {
+                    fallbackMessage = `${getCurrentModelName()} is experiencing technical difficulties. Please try again later.`;
+                } else if (error.message.includes('401') || error.message.includes('403')) {
+                    fallbackMessage = `${getCurrentModelName()} API authentication failed. Please check your API key configuration.`;
+                } else {
+                    fallbackMessage = `I'm having trouble connecting to ${getCurrentModelName()}. Please try again in a moment.`;
+                }
+                
+                addMessage(fallbackMessage, 'bot');
+            } finally {
+                // Always hide typing indicator
                 hideTypingIndicator();
-                generateAIResponse(message);
-            }, 1500 + Math.random() * 1000);
+            }
+        }
+
+        function getCurrentModelName() {
+            const modelNames = {
+                'claude': 'Claude Sonnet',
+                'chatgpt': 'ChatGPT-4',
+                'kimi': 'Kimi AI',
+                'gemini': 'Gemini Pro'
+            };
+            return modelNames[currentModel] || 'AI Assistant';
+        }
+
+        function updateTypingIndicator(message) {
+            const indicator = document.getElementById('typingIndicator');
+            const dotsContainer = indicator.querySelector('.typing-dots');
+            dotsContainer.style.padding = '0.75rem 1rem';
+            dotsContainer.innerHTML = `<span style="color: #6b7280; font-size: 0.875rem;">${message}</span>`;
+        }
+
+        function resetTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            const dotsContainer = indicator.querySelector('.typing-dots');
+            dotsContainer.innerHTML = `
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            `;
         }
 
         function addMessage(content, sender) {
@@ -582,47 +657,9 @@
         }
 
         function generateAIResponse(userMessage) {
-            // Model-specific response styles
-            const modelResponses = {
-                'claude': {
-                    'pricing': 'Summit AI offers three carefully designed pricing tiers to meet diverse enterprise needs. Our Foundation Layer provides comprehensive AI-ready infrastructure starting at $2,500/month, while Agent Activation enables sophisticated operational automation, and Enterprise Intelligence delivers complete AI transformation. Each tier includes our signature sovereign cloud compliance.',
-                    'compliance': 'Our sovereign cloud architecture ensures complete data sovereignty with HIPAA, SOC2, and regional compliance built into the foundation. Data never crosses specified geographic boundaries, and we provide native healthcare compliance rather than retrofitted solutions.',
-                    'infrastructure': 'Summit AI\'s infrastructure features pre-configured environments optimized for PyTorch, TensorFlow, and MLOps workflows, with guaranteed 99.95% uptime and direct access to leading models including Claude, GPT, and the Llama family.',
-                    'default': 'I can provide detailed information about Summit AI\'s sovereign cloud infrastructure, our three-tier pricing model, comprehensive compliance features, and enterprise AI capabilities. What specific aspect would you like to explore?'
-                },
-                'chatgpt': {
-                    'pricing': 'Here\'s a breakdown of Summit AI\'s pricing structure:\n\n1. **Foundation Layer** - $2,500/month for AI-ready infrastructure\n2. **Agent Activation** - $125/agent/month for operational automation\n3. **Enterprise Intelligence** - Starting at $75K/month for full transformation\n\nAll tiers include sovereign cloud compliance and healthcare specialization.',
-                    'compliance': 'Summit AI ensures data sovereignty through:\n• HIPAA compliance built-in\n• SOC2 certification\n• Geographic data boundaries\n• Native healthcare compliance\n• No post-hoc retrofitting required',
-                    'infrastructure': 'Our technical stack includes:\n• Pre-configured AI environments (PyTorch, TensorFlow, MLOps)\n• 99.95% uptime SLA\n• Direct model access (Claude, GPT, Llama)\n• Healthcare-optimized workflows\n• Sovereign data processing',
-                    'default': 'I\'m here to help with Summit AI\'s offerings! I can discuss our pricing models, compliance features, infrastructure capabilities, and enterprise AI solutions. What would you like to know more about?'
-                },
-                'kimi': {
-                    'pricing': '根据企业需求，Summit AI提供三层定价结构：基础层（Foundation Layer）月费2,500美元提供AI就绪基础设施；智能体激活层（Agent Activation）每个智能体月费125美元实现运营自动化；企业智能层（Enterprise Intelligence）起价75,000美元/月实现完整AI转型。所有层级都包含主权云合规和医疗保健专业化服务。',
-                    'compliance': 'Summit AI通过内置的主权云架构确保完整的数据主权，包括HIPAA、SOC2和区域合规要求。数据绝不会跨越指定的地理边界，我们提供原生医疗保健合规而非后期改造的解决方案。',
-                    'infrastructure': 'Summit AI基础设施具备为PyTorch、TensorFlow和MLOps优化的预配置环境，保证99.95%正常运行时间，并提供对Claude、GPT和Llama系列等领先模型的直接访问。',
-                    'default': '我可以为您详细介绍Summit AI的主权云基础设施、三层定价模型、全面合规功能和企业AI能力。您希望了解哪个具体方面？'
-                },
-                'gemini': {
-                    'pricing': 'Summit AI has architected a three-tier value proposition: Foundation Layer delivers AI-ready infrastructure at $2,500 monthly, optimizing initial capabilities. Agent Activation scales operational automation through a hybrid model of $125 per agent monthly plus usage-based pricing. Enterprise Intelligence transforms organizations with comprehensive solutions starting at $75,000 monthly, including sovereign compliance frameworks.',
-                    'compliance': 'The platform implements multi-layered sovereignty through geographic data residency, comprehensive regulatory alignment including HIPAA and SOC2, and native healthcare compliance architecture that eliminates post-deployment certification challenges.',
-                    'infrastructure': 'Summit AI\'s technical foundation encompasses containerized ML environments pre-optimized for PyTorch and TensorFlow workflows, enterprise-grade SLA guarantees of 99.95% availability, and federated access to frontier models including Claude, GPT variants, and Meta\'s Llama ecosystem.',
-                    'default': 'I can analyze Summit AI\'s comprehensive offerings across infrastructure sovereignty, pricing optimization, regulatory compliance, and enterprise transformation capabilities. Which domain requires deeper analysis?'
-                }
-            };
-
-            const lowerMessage = userMessage.toLowerCase();
-            const responses = modelResponses[currentModel];
-            let response = responses.default;
-
-            if (lowerMessage.includes('price') || lowerMessage.includes('cost') || lowerMessage.includes('pricing')) {
-                response = responses.pricing;
-            } else if (lowerMessage.includes('compliance') || lowerMessage.includes('security') || lowerMessage.includes('sovereign')) {
-                response = responses.compliance;
-            } else if (lowerMessage.includes('infrastructure') || lowerMessage.includes('technical') || lowerMessage.includes('platform')) {
-                response = responses.infrastructure;
-            }
-
-            addMessage(response, 'bot');
+            // Model-specific response styles - REMOVED
+            // This function is now handled by the async generateAIResponse above
+            // keeping this for backwards compatibility but it won't be called
         }
 
         // Auto-focus input on page load
