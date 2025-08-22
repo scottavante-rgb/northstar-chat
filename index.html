@@ -60,6 +60,67 @@
             color: #1f2937;
         }
 
+        .model-selector {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .model-label {
+            font-size: 0.875rem;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .model-dropdown {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            background-color: white;
+            color: #374151;
+            cursor: pointer;
+            min-width: 120px;
+            transition: border-color 0.2s ease;
+        }
+
+        .model-dropdown:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .current-model {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background-color: rgba(102, 126, 234, 0.1);
+            border-radius: 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+            color: #667eea;
+            justify-content: center;
+        }
+
+        .model-icon {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        .model-chatgpt { background: linear-gradient(135deg, #10a37f, #1a7f64); }
+        .model-claude { background: linear-gradient(135deg, #ff6b35, #f7931e); }
+        .model-kimi { background: linear-gradient(135deg, #8b5cf6, #a855f7); }
+        .model-gemini { background: linear-gradient(135deg, #4285f4, #34a853); }
+
         .chat-container {
             flex: 1;
             overflow-y: auto;
@@ -298,9 +359,24 @@
             </div>
             <span class="logo-text">Northstar AI Assistant</span>
         </div>
+        <div class="model-selector">
+            <span class="model-label">Model:</span>
+            <select class="model-dropdown" id="modelSelector" onchange="changeModel()">
+                <option value="claude">Claude Sonnet</option>
+                <option value="chatgpt">ChatGPT-4</option>
+                <option value="kimi">Kimi AI</option>
+                <option value="gemini">Gemini Pro</option>
+            </select>
+        </div>
     </div>
 
     <div class="chat-container" id="chatContainer">
+        <!-- Current model indicator -->
+        <div class="current-model" id="currentModel">
+            <div class="model-icon model-claude">C</div>
+            <span>Currently using Claude Sonnet via Summit AI Infrastructure</span>
+        </div>
+
         <!-- Sample conversation -->
         <div class="message user">
             <div class="message-avatar user-avatar">👤</div>
@@ -357,6 +433,8 @@
     </div>
 
     <script>
+        let currentModel = 'claude';
+
         function adjustTextareaHeight(textarea) {
             textarea.style.height = 'auto';
             textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
@@ -372,6 +450,75 @@
         function handleAttachment() {
             // Implement file attachment functionality
             console.log('Attachment button clicked');
+        }
+
+        function changeModel() {
+            const selector = document.getElementById('modelSelector');
+            const newModel = selector.value;
+            currentModel = newModel;
+            
+            // Update the current model indicator
+            updateModelIndicator(newModel);
+            
+            // Add a system message about the model change
+            addModelChangeMessage(newModel);
+        }
+
+        function updateModelIndicator(model) {
+            const indicator = document.getElementById('currentModel');
+            const modelInfo = {
+                'claude': { 
+                    icon: 'C', 
+                    class: 'model-claude', 
+                    name: 'Claude Sonnet via Summit AI Infrastructure' 
+                },
+                'chatgpt': { 
+                    icon: 'G', 
+                    class: 'model-chatgpt', 
+                    name: 'ChatGPT-4 via Summit AI Infrastructure' 
+                },
+                'kimi': { 
+                    icon: 'K', 
+                    class: 'model-kimi', 
+                    name: 'Kimi AI via Summit AI Infrastructure' 
+                },
+                'gemini': { 
+                    icon: 'G', 
+                    class: 'model-gemini', 
+                    name: 'Gemini Pro via Summit AI Infrastructure' 
+                }
+            };
+            
+            const info = modelInfo[model];
+            indicator.innerHTML = `
+                <div class="model-icon ${info.class}">${info.icon}</div>
+                <span>Currently using ${info.name}</span>
+            `;
+        }
+
+        function addModelChangeMessage(model) {
+            const modelNames = {
+                'claude': 'Claude Sonnet',
+                'chatgpt': 'ChatGPT-4',
+                'kimi': 'Kimi AI',
+                'gemini': 'Gemini Pro'
+            };
+            
+            const chatContainer = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'current-model';
+            messageDiv.style.backgroundColor = 'rgba(34, 197, 94, 0.1)';
+            messageDiv.style.color = '#059669';
+            messageDiv.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span>Switched to ${modelNames[model]} model</span>
+            `;
+            
+            const typingIndicator = document.getElementById('typingIndicator');
+            chatContainer.insertBefore(messageDiv, typingIndicator);
+            scrollToBottom();
         }
 
         function sendMessage() {
@@ -435,15 +582,36 @@
         }
 
         function generateAIResponse(userMessage) {
-            // Simple AI response simulation - replace with actual AI API call
-            const responses = {
-                'pricing': 'Summit AI offers three pricing tiers designed for different enterprise needs. Our Foundation Layer provides AI-ready infrastructure, Agent Activation enables operational automation, and Enterprise Intelligence delivers complete AI transformation.',
-                'compliance': 'All Summit AI tiers include sovereign cloud compliance with HIPAA, SOC2, and regional requirements. Data never leaves specified geographic boundaries, and we provide native healthcare compliance.',
-                'infrastructure': 'Our AI infrastructure includes pre-configured environments with PyTorch, TensorFlow, MLOps, 99.95% uptime SLA, and direct access to models like Claude, GPT, and Llama family.',
-                'default': 'I can help you with information about Summit AI\'s sovereign cloud infrastructure, pricing models, compliance features, and enterprise AI capabilities. What specific aspect would you like to know more about?'
+            // Model-specific response styles
+            const modelResponses = {
+                'claude': {
+                    'pricing': 'Summit AI offers three carefully designed pricing tiers to meet diverse enterprise needs. Our Foundation Layer provides comprehensive AI-ready infrastructure starting at $2,500/month, while Agent Activation enables sophisticated operational automation, and Enterprise Intelligence delivers complete AI transformation. Each tier includes our signature sovereign cloud compliance.',
+                    'compliance': 'Our sovereign cloud architecture ensures complete data sovereignty with HIPAA, SOC2, and regional compliance built into the foundation. Data never crosses specified geographic boundaries, and we provide native healthcare compliance rather than retrofitted solutions.',
+                    'infrastructure': 'Summit AI\'s infrastructure features pre-configured environments optimized for PyTorch, TensorFlow, and MLOps workflows, with guaranteed 99.95% uptime and direct access to leading models including Claude, GPT, and the Llama family.',
+                    'default': 'I can provide detailed information about Summit AI\'s sovereign cloud infrastructure, our three-tier pricing model, comprehensive compliance features, and enterprise AI capabilities. What specific aspect would you like to explore?'
+                },
+                'chatgpt': {
+                    'pricing': 'Here\'s a breakdown of Summit AI\'s pricing structure:\n\n1. **Foundation Layer** - $2,500/month for AI-ready infrastructure\n2. **Agent Activation** - $125/agent/month for operational automation\n3. **Enterprise Intelligence** - Starting at $75K/month for full transformation\n\nAll tiers include sovereign cloud compliance and healthcare specialization.',
+                    'compliance': 'Summit AI ensures data sovereignty through:\n• HIPAA compliance built-in\n• SOC2 certification\n• Geographic data boundaries\n• Native healthcare compliance\n• No post-hoc retrofitting required',
+                    'infrastructure': 'Our technical stack includes:\n• Pre-configured AI environments (PyTorch, TensorFlow, MLOps)\n• 99.95% uptime SLA\n• Direct model access (Claude, GPT, Llama)\n• Healthcare-optimized workflows\n• Sovereign data processing',
+                    'default': 'I\'m here to help with Summit AI\'s offerings! I can discuss our pricing models, compliance features, infrastructure capabilities, and enterprise AI solutions. What would you like to know more about?'
+                },
+                'kimi': {
+                    'pricing': '根据企业需求，Summit AI提供三层定价结构：基础层（Foundation Layer）月费2,500美元提供AI就绪基础设施；智能体激活层（Agent Activation）每个智能体月费125美元实现运营自动化；企业智能层（Enterprise Intelligence）起价75,000美元/月实现完整AI转型。所有层级都包含主权云合规和医疗保健专业化服务。',
+                    'compliance': 'Summit AI通过内置的主权云架构确保完整的数据主权，包括HIPAA、SOC2和区域合规要求。数据绝不会跨越指定的地理边界，我们提供原生医疗保健合规而非后期改造的解决方案。',
+                    'infrastructure': 'Summit AI基础设施具备为PyTorch、TensorFlow和MLOps优化的预配置环境，保证99.95%正常运行时间，并提供对Claude、GPT和Llama系列等领先模型的直接访问。',
+                    'default': '我可以为您详细介绍Summit AI的主权云基础设施、三层定价模型、全面合规功能和企业AI能力。您希望了解哪个具体方面？'
+                },
+                'gemini': {
+                    'pricing': 'Summit AI has architected a three-tier value proposition: Foundation Layer delivers AI-ready infrastructure at $2,500 monthly, optimizing initial capabilities. Agent Activation scales operational automation through a hybrid model of $125 per agent monthly plus usage-based pricing. Enterprise Intelligence transforms organizations with comprehensive solutions starting at $75,000 monthly, including sovereign compliance frameworks.',
+                    'compliance': 'The platform implements multi-layered sovereignty through geographic data residency, comprehensive regulatory alignment including HIPAA and SOC2, and native healthcare compliance architecture that eliminates post-deployment certification challenges.',
+                    'infrastructure': 'Summit AI\'s technical foundation encompasses containerized ML environments pre-optimized for PyTorch and TensorFlow workflows, enterprise-grade SLA guarantees of 99.95% availability, and federated access to frontier models including Claude, GPT variants, and Meta\'s Llama ecosystem.',
+                    'default': 'I can analyze Summit AI\'s comprehensive offerings across infrastructure sovereignty, pricing optimization, regulatory compliance, and enterprise transformation capabilities. Which domain requires deeper analysis?'
+                }
             };
 
             const lowerMessage = userMessage.toLowerCase();
+            const responses = modelResponses[currentModel];
             let response = responses.default;
 
             if (lowerMessage.includes('price') || lowerMessage.includes('cost') || lowerMessage.includes('pricing')) {
