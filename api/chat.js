@@ -58,18 +58,42 @@ export default async function handler(req, res) {
   }
 }
 
-// TEMPORARY TEST VERSION - Claude API (bypasses real Claude for testing)
+// REAL CLAUDE API - Now that we know everything works!
 async function callClaude(message) {
-  // 🧪 TEMPORARY: Return test response to confirm everything works
-  return `✅ SUCCESS! Your Northstar AI is working perfectly! You asked: "${message}". 
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return `🤖 Claude not configured. Add your Anthropic API key to Vercel environment variables.`;
+  }
 
-This is a test response confirming that:
-- ✅ Your frontend is working
-- ✅ Your API endpoint is working  
-- ✅ Your server is responding
-- ✅ All connections are established
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-3-sonnet-20240229',
+        max_tokens: 1000,
+        messages: [
+          {
+            role: 'user',
+            content: `You are Northstar AI, Summit AI's intelligent assistant. Answer the user's question naturally and helpfully. User question: ${message}`
+          }
+        ]
+      })
+    });
 
-Once we confirm this test works, we'll connect the real Claude API and you'll get actual AI responses. The infrastructure is ready!`;
+    if (!response.ok) {
+      throw new Error(`Claude API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.content[0].text;
+  } catch (error) {
+    console.error('Claude API Error:', error);
+    throw new Error('Claude API unavailable');
+  }
 }
 
 // ChatGPT API Integration (ready for when you add OpenAI key)
