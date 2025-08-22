@@ -1,4 +1,4 @@
-// api/chat.js - Complete Northstar AI Chat API
+// api/chat.js - Debug Version
 export default async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -58,6 +58,31 @@ export default async function handler(req, res) {
   }
 }
 
+// DEBUG VERSION of ChatGPT function
+async function callChatGPT(message) {
+  // Return detailed debug info
+  const debugInfo = {
+    hasApiKey: !!process.env.OPENAI_API_KEY,
+    keyLength: process.env.OPENAI_API_KEY?.length || 0,
+    keyPrefix: process.env.OPENAI_API_KEY?.substring(0, 15) || 'none',
+    startsWithSkProj: process.env.OPENAI_API_KEY?.startsWith('sk-proj') || false,
+    allEnvVars: Object.keys(process.env).filter(k => k.includes('OPENAI') || k.includes('API')),
+    nodeEnv: process.env.NODE_ENV,
+    vercelEnv: process.env.VERCEL_ENV
+  };
+  
+  return `🔍 OPENAI DEBUG INFO:
+- API Key exists: ${debugInfo.hasApiKey}
+- Key length: ${debugInfo.keyLength}
+- Key starts with: ${debugInfo.keyPrefix}...
+- Starts with sk-proj: ${debugInfo.startsWithSkProj}
+- Available API env vars: ${debugInfo.allEnvVars.join(', ') || 'none'}
+- Node Environment: ${debugInfo.nodeEnv}
+- Vercel Environment: ${debugInfo.vercelEnv}
+
+This debug info will help us identify the environment variable issue.`;
+}
+
 // Claude API Integration
 async function callClaude(message) {
   if (!process.env.CLAUDE_API_KEY) {
@@ -106,56 +131,6 @@ User question: ${message}`
   } catch (error) {
     console.error('Claude API Error:', error);
     throw new Error(`Claude API unavailable: ${error.message}`);
-  }
-}
-
-// ChatGPT API Integration (ready for when you add OpenAI key)
-async function callChatGPT(message) {
-  if (!process.env.OPENAI_API_KEY) {
-    return `📝 ChatGPT not configured yet. Add your OpenAI API key to Vercel environment variables as 'OPENAI_API_KEY' to enable ChatGPT responses.`;
-  }
-
-  try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4',
-        messages: [
-          {
-            role: 'system',
-            content: `You are Northstar AI, Summit AI's intelligent assistant. Summit AI provides sovereign cloud infrastructure and enterprise AI solutions with three pricing tiers:
-
-- Foundation Layer: $2,500/month for AI-ready infrastructure with 99.95% uptime SLA
-- Agent Activation: $125/agent/month plus $0.45 per thousand actions for operational automation
-- Enterprise Intelligence: Starting at $75K/month for complete AI transformation
-
-Key features: Sovereign cloud compliance, HIPAA/SOC2 certified, healthcare specialization, geographic data boundaries, native compliance architecture.
-
-Provide helpful, structured responses about Summit AI's offerings.`
-          },
-          {
-            role: 'user',
-            content: message
-          }
-        ],
-        max_tokens: 1000,
-        temperature: 0.7
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data.choices[0].message.content;
-  } catch (error) {
-    console.error('ChatGPT API Error:', error);
-    return `❌ ChatGPT API error: ${error.message}. Please check your OpenAI API key configuration.`;
   }
 }
 
